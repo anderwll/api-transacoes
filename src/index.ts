@@ -52,7 +52,7 @@ app.get(
 
     return response
       .status(201)
-      .json({ message: "its list, bro", user: user.handleProperties() }); // retorna o user buscado por id
+      .json({ message: "User list, bro", user: user.handleProperties() }); // retorna o user buscado por id
   }
 );
 
@@ -83,7 +83,7 @@ app.get("/users", (request: Request, response: Response) => {
   const users = usersFilter.map((user) => user.handleProperties());
 
   return response.status(201).json({
-    message: "its list, bro",
+    message: "User list, bro",
     users, // retorna a lista de users ou o user filtrado pelo body
   });
 });
@@ -106,7 +106,7 @@ app.put(
     const user = listUsers[userIndex].handleProperties();
 
     return response.status(200).json({
-      message: "Successfully updated, bro",
+      message: "Successfully updated user, bro",
       user, // retorna o user atualizado
     });
   }
@@ -121,12 +121,12 @@ app.delete(
 
     const userIndex = listUsers.findIndex((user) => user.id === userId);
 
-    listUsers.splice(userIndex, 1);
-
     const user = listUsers[userIndex].handleProperties();
 
+    listUsers.splice(userIndex, 1);
+
     return response.status(200).json({
-      message: "Successfully delete, bro",
+      message: "Successfully delete user, bro",
       user, // retorna o user deletado
     });
   }
@@ -151,7 +151,7 @@ app.post(
     );
 
     return response.status(200).json({
-      message: "Successfully create, bro",
+      message: "Successfully create transaction, bro",
       data: { title, value, type }, // retorna a transação criada
     });
   }
@@ -165,18 +165,13 @@ app.get(
   (request: Request, response: Response) => {
     const { userId, id } = request.params;
 
-    const userIndex = listUsers.findIndex((user) => user.id === userId);
+    const user = listUsers.find((user) => user.id === userId);
 
-    const transactionIndex = listUsers.findIndex((user) => {
-      user.transactions?.findIndex((trans) => trans.id === id);
-    });
-
-    const transaction =
-      listUsers[userIndex].transactions![transactionIndex].handleProperties();
+    const transaction = user?.transactions?.find((trans) => trans.id === id);
 
     return response.status(200).json({
-      message: "Its list, bro",
-      transaction, // retorna a transação buscado no user especifico
+      message: "Rransaction by id, bro",
+      transaction: transaction?.handleProperties(), // retorna a transação buscado no user especifico
     });
   }
 );
@@ -198,7 +193,7 @@ app.get(
     const total = income - outcome;
 
     return response.status(200).json({
-      message: "Its list, bro",
+      message: "Transaction list, bro",
       transactions,
       balance: {
         income,
@@ -209,7 +204,61 @@ app.get(
   }
 );
 
-// ---------- PUT 
-app.put('/users/:userId/transactions/:id')
+// ---------- PUT/:ID
+app.put(
+  "/users/:userId/transactions/:id",
+  validationUserExists,
+  validationTransactionExists,
+  validationTypeTransactions,
+  (request: Request, response: Response) => {
+    const { userId, id } = request.params;
+    const { title, value, type } = request.body;
+
+    const userIndex = listUsers.findIndex((user) => user.id === userId);
+    const transactionIndex = listUsers[userIndex].transactions?.findIndex(
+      (trans) => trans.id === id
+    ) as number;
+
+    listUsers[userIndex].transactions![transactionIndex].title =
+      title ?? listUsers[userIndex].transactions![transactionIndex].title;
+    listUsers[userIndex].transactions![transactionIndex].value =
+      value ?? listUsers[userIndex].transactions![transactionIndex].value;
+    listUsers[userIndex].transactions![transactionIndex].type =
+      type ?? listUsers[userIndex].transactions![transactionIndex].type;
+
+    const transaction =
+      listUsers[userIndex].transactions![transactionIndex].handleProperties();
+
+    return response.status(200).json({
+      message: "Successfully update transaction, bro",
+      transaction, // retorna a transação editada no user especifico
+    });
+  }
+);
+
+// ---------- DELETE/:ID
+app.delete(
+  "/users/:userId/transactions/:id",
+  validationUserExists,
+  validationTransactionExists,
+  (request: Request, response: Response) => {
+    const { userId, id } = request.params;
+
+    const userIndex = listUsers.findIndex((user) => user.id === userId);
+    const transactionIndex = listUsers[userIndex].transactions?.findIndex(
+      (trans) => trans.id === id
+    ) as number;
+
+    const transaction =
+      listUsers[userIndex].transactions![transactionIndex].handleProperties();
+
+    listUsers[userIndex].transactions?.splice(transactionIndex, 1);
+
+    return response.status(200).json({
+      message: "Successfully deleted transaction, bro",
+      transaction, // retorna a transação deletada no user especifico
+    });
+  }
+);
 
 app.listen(8080, () => console.log("Server ON ✔"));

@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { listUsers } from "..";
+import { Transaction, User } from "../classes";
 
 export const validationTransactionExists = (
   request: Request,
@@ -12,8 +13,8 @@ export const validationTransactionExists = (
     return response.status(400).json({ message: "ID not found, bro" });
   }
 
-  const user = listUsers.find((user) => user.id === userId);
-  const transaction = user?.transactions?.find((trans) => trans.id === id)
+  const user = listUsers.find((user) => user.id === userId) as User;
+  const transaction = user.transactions?.find((trans) => trans.id === id);
 
   if (!transaction) {
     return response.status(400).json({ message: "Transaction not found, bro" });
