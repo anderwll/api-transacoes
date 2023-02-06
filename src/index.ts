@@ -1,0 +1,215 @@
+import express, { Request, Response } from "express";
+import { Transaction, User } from "./classes";
+import {
+  validationUserExists,
+  CPFvalidator,
+  validationData,
+  validationDataTransactions,
+  validationTypeTransactions,
+  validationTransactionExists,
+} from "./middlewares";
+
+const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+app.get("/", (request: Request, response: Response) => {
+  return response.send("API ✔");
+});
+
+// ----------------------- LIST USERS -----------------------
+export const listUsers: Array<User> = [];
+
+// ----------------------- USERS -----------------------
+
+// ---------- POST
+app.post(
+  "/users",
+  validationData,
+  CPFvalidator,
+  (request: Request, response: Response) => {
+    const { name, cpf, email, age } = request.body;
+    const newCPF = cpf.replace(/[^a-zA-Z0-9]/g, "");
+
+    const newUser = new User({ name, cpf: newCPF, email, age });
+    listUsers.push(newUser);
+
+    return response.status(201).json({
+      message: "User created sucessfull, bro",
+      user: newUser.handleProperties(), // retorna o user criado
+    });
+  }
+);
+
+// ---------- GET/:ID
+app.get(
+  "/users/:userId",
+  validationUserExists,
+  (request: Request, response: Response) => {
+    const { userId } = request.params;
+
+    const user = listUsers.find((user) => user.id === userId) as User;
+
+    return response
+      .status(201)
+      .json({ message: "its list, bro", user: user.handleProperties() }); // retorna o user buscado por id
+  }
+);
+
+// ---------- GET / GET/FILTER
+app.get("/users", (request: Request, response: Response) => {
+  const { name, email, cpf } = request.query;
+
+  const usersFilter = listUsers.filter((user) => {
+    if (name && email && cpf) {
+      return (
+        user.name.includes(name as string) &&
+        user.cpf.includes(cpf as string) &&
+        user.email.includes(email as string)
+      );
+    }
+
+    if (name || email || cpf) {
+      return (
+        user.name.includes(name as string) ||
+        user.cpf.includes(cpf as string) ||
+        user.email.includes(email as string)
+      );
+    }
+
+    return user;
+  });
+
+  const users = usersFilter.map((user) => user.handleProperties());
+
+  return response.status(201).json({
+    message: "its list, bro",
+    users, // retorna a lista de users ou o user filtrado pelo body
+  });
+});
+
+// ---------- PUT/:ID
+app.put(
+  "/users/:userId",
+  validationUserExists,
+  (request: Request, response: Response) => {
+    const { userId } = request.params;
+    const { name, email, cpf, age } = request.body;
+
+    const userIndex = listUsers.findIndex((user) => user.id === userId);
+
+    listUsers[userIndex].name = name ?? listUsers[userIndex].name;
+    listUsers[userIndex].email = email ?? listUsers[userIndex].email;
+    listUsers[userIndex].cpf = cpf ?? listUsers[userIndex].cpf;
+    listUsers[userIndex].age = age ?? listUsers[userIndex].age;
+
+    const user = listUsers[userIndex].handleProperties();
+
+    return response.status(200).json({
+      message: "Successfully updated, bro",
+      user, // retorna o user atualizado
+    });
+  }
+);
+
+// ---------- DELETE/:ID
+app.delete(
+  "/users/:userId",
+  validationUserExists,
+  (request: Request, response: Response) => {
+    const { userId } = request.params;
+
+    const userIndex = listUsers.findIndex((user) => user.id === userId);
+
+    listUsers.splice(userIndex, 1);
+
+    const user = listUsers[userIndex].handleProperties();
+
+    return response.status(200).json({
+      message: "Successfully delete, bro",
+      user, // retorna o user deletado
+    });
+  }
+);
+
+// ----------------------- TRANSACTIONS -----------------------
+
+// ---------- POST
+app.post(
+  "/users/:userId/transactions",
+  validationUserExists,
+  validationDataTransactions,
+  validationTypeTransactions,
+  (request: Request, response: Response) => {
+    const { userId } = request.params;
+    const { title, value, type } = request.body;
+
+    const userIndex = listUsers.findIndex((user) => user.id === userId);
+
+    listUsers[userIndex].transactions?.push(
+      new Transaction({ title, value, type })
+    );
+
+    return response.status(200).json({
+      message: "Successfully create, bro",
+      data: { title, value, type }, // retorna a transação criada
+    });
+  }
+);
+
+// ---------- GET/:ID
+app.get(
+  "/users/:userId/transactions/:id",
+  validationUserExists,
+  validationTransactionExists,
+  (request: Request, response: Response) => {
+    const { userId, id } = request.params;
+
+    const userIndex = listUsers.findIndex((user) => user.id === userId);
+
+    const transactionIndex = listUsers.findIndex((user) => {
+      user.transactions?.findIndex((trans) => trans.id === id);
+    });
+
+    const transaction =
+      listUsers[userIndex].transactions![transactionIndex].handleProperties();
+
+    return response.status(200).json({
+      message: "Its list, bro",
+      transaction, // retorna a transação buscado no user especifico
+    });
+  }
+);
+
+// ---------- GET ALL
+app.get(
+  "/users/:userId/transactions",
+  validationUserExists,
+  (request: Request, response: Response) => {
+    const { userId } = request.params;
+
+    const userIndex = listUsers.findIndex((user) => user.id === userId);
+
+    const transactions = listUsers[userIndex].transactions?.map((trans) =>
+      trans.handleProperties()
+    );
+    const income = listUsers[userIndex].calculate("income");
+    const outcome = listUsers[userIndex].calculate("outcome");
+    const total = income - outcome;
+
+    return response.status(200).json({
+      message: "Its list, bro",
+      transactions,
+      balance: {
+        income,
+        outcome,
+        total,
+      },
+    });
+  }
+);
+
+// ---------- PUT 
+app.put('/users/:userId/transactions/:id')
+
+app.listen(8080, () => console.log("Server ON ✔"));
